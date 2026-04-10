@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PPT 图表生成器</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f172a;
+  --panel: #1e293b;
+  --card: #334155;
+  --card-hover: #3d4f6b;
+  --border: #475569;
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --radius: 8px;
+  --radius-sm: 4px;
+}
+
+body {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ── */
+header {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+header h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.02em; }
+header span { font-size: 12px; color: var(--text-muted); }
+
+/* ── Layout ── */
+#app {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Left Panel ── */
+#panel {
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+#panel::-webkit-scrollbar { width: 4px; }
+#panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* ── Chart Type Tabs ── */
+#chart-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.tab-btn {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tab-btn:hover { border-color: var(--accent); color: var(--text); }
+.tab-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 500;
+}
+
+/* ── Style Cards ── */
+#style-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.style-card {
+  border-radius: var(--radius);
+  border: 2px solid transparent;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.15s, transform 0.1s;
+  position: relative;
+}
+.style-card:hover { transform: translateY(-1px); }
+.style-card.active { border-color: var(--accent); }
+.style-card .card-preview {
+  height: 52px;
+  padding: 8px 10px 4px;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+}
+.style-card .mini-bar {
+  flex: 1;
+  border-radius: 2px 2px 0 0;
+}
+.style-card .card-name {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 5px 8px 6px;
+  background: rgba(0,0,0,0.15);
+  text-align: center;
+}
+
+/* ── Palette Items ── */
+#palette-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.palette-item {
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 7px 8px;
+  background: var(--card);
+  transition: border-color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.palette-item:hover { background: var(--card-hover); }
+.palette-item.active { border-color: var(--accent); }
+.swatch-row { display: flex; gap: 2px; }
+.swatch { width: 14px; height: 14px; border-radius: 2px; }
+.palette-name { font-size: 12px; color: var(--text-muted); }
+
+/* ── Data Panels ── */
+.data-panel { display: none; flex-direction: column; gap: 8px; }
+.data-panel.active { display: flex; }
+
+.editable-table-wrap { overflow-x: auto; }
+table.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+table.data-table th, table.data-table td {
+  border: 1px solid var(--border);
+  padding: 5px 8px;
+  text-align: center;
+  min-width: 70px;
+}
+table.data-table th {
+  background: var(--card);
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 11px;
+}
+table.data-table td[contenteditable="true"] {
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  cursor: text;
+}
+table.data-table td[contenteditable="true"]:focus {
+  background: #1e3a5f;
+}
+.del-btn {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 4px;
+  opacity: 0.6;
+}
+.del-btn:hover { opacity: 1; }
+
+.row-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.btn-sm {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-sm:hover { border-color: var(--accent); color: var(--text); }
+
+textarea.json-input {
+  width: 100%;
+  height: 140px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 11px;
+  padding: 10px;
+  resize: vertical;
+  outline: none;
+  line-height: 1.5;
+}
+textarea.json-input:focus { border-color: var(--accent); }
+
+/* ── Text Inputs ── */
+.input-row { display: flex; flex-direction: column; gap: 4px; }
+.input-row label { font-size: 11px; color: var(--text-muted); }
+input.text-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+  padding: 7px 10px;
+  outline: none;
+  width: 100%;
+}
+input.text-input:focus { border-color: var(--accent); }
+
+/* ── Options Checkboxes ── */
+#options-area {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-height: 28px;
+}
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+.checkbox-label input { accent-color: var(--accent); cursor: pointer; }
+
+/* ── Buttons ── */
+.btn-row { display: flex; gap: 8px; }
+#btn-generate {
+  flex: 1;
+  padding: 10px;
+  border-radius: var(--radius);
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+#btn-generate:hover { background: var(--accent-hover); }
+#btn-generate:disabled { background: var(--border); cursor: not-allowed; }
+#btn-download {
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+#btn-download:hover:not(:disabled) { border-color: var(--success); color: var(--success); }
+#btn-download:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Right Preview ── */
+#preview {
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  gap: 16px;
+  position: relative;
+}
+#preview-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-muted);
+  user-select: none;
+}
+#preview-placeholder svg { opacity: 0.3; }
+#preview-placeholder p { font-size: 14px; }
+#chart-img {
+  max-width: 100%;
+  max-height: calc(100vh - 120px);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  display: none;
+}
+#error-msg {
+  color: var(--danger);
+  font-size: 13px;
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.3);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  display: none;
+  max-width: 480px;
+  text-align: center;
+}
+#loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15,23,42,0.7);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--text-muted);
+  border-radius: var(--radius);
+}
+#loading-overlay.active { display: flex; }
+.spinner {
+  width: 32px; height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+hr.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0;
+}
+
+/* ── Radar dimension input ── */
+.dim-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 12px;
+  padding: 6px 10px;
+  outline: none;
+  width: 100%;
+}
+.dim-input:focus { border-color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2">
+    <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+    <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+  </svg>
+  <h1>PPT 图表生成器</h1>
+  <span>5 种图表 · 6 种风格 · 8 种颜色</span>
+</header>
+
+<div id="app">
+
+  <!-- ── 左侧控制面板 ── -->
+  <div id="panel">
+
+    <!-- 图表类型 -->
+    <div>
+      <div class="section-label">图表类型</div>
+      <div id="chart-tabs"></div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- 风格选择 -->
+    <div>
+      <div class="section-label">视觉风格</div>
+      <div id="style-grid"></div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- 颜色方案 -->
+    <div>
+      <div class="section-label">颜色方案</div>
+      <div id="palette-grid"></div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- 数据输入 -->
+    <div>
+      <div class="section-label">数据输入</div>
+
+      <!-- Bar -->
+      <div class="data-panel" id="panel-bar">
+        <div class="editable-table-wrap">
+          <table class="data-table" id="table-bar">
+            <thead><tr>
+              <th>分类</th>
+              <th contenteditable="true" class="series-header">系列A</th>
+              <th contenteditable="true" class="series-header">系列B</th>
+              <th style="width:28px;border:none;background:transparent"></th>
+            </tr></thead>
+            <tbody>
+              <tr><td contenteditable="true">Q1</td><td contenteditable="true">42</td><td contenteditable="true">35</td><td><button class="del-btn" onclick="delRow(this)">×</button></td></tr>
+              <tr><td contenteditable="true">Q2</td><td contenteditable="true">58</td><td contenteditable="true">47</td><td><button class="del-btn" onclick="delRow(this)">×</button></td></tr>
+              <tr><td contenteditable="true">Q3</td><td contenteditable="true">71</td><td contenteditable="true">63</td><td><button class="del-btn" onclick="delRow(this)">×</button></td></tr>
+              <tr><td contenteditable="true">Q4</td><td contenteditable="true">89</td><td contenteditable="true">74</td><td><button class="del-btn" onclick="delRow(this)">×</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="row-actions">
+          <button class="btn-sm" onclick="addRow('table-bar')">+ 行</button>
+          <button class="btn-sm" onclick="addCol('table-bar')">+ 系列</button>
+        </div>
+      </div>
+
+      <!-- Line -->
+      <div class="data-panel" id="panel-line">
+        <div class="editable-table-wrap">
+          <table class="data-table" id="table-line">
+            <thead><tr>
+              <th>时间</th>
+              <th contenteditable="true" class="series-header">收入</th>
+              <th contenteditable="true" class="series-header">成本</th>
+              <th style="width:28px;border:none;background:transparent"></th>
+            </tr></thead>
+            <tbody>
+              <tr><td contenteditable="true">1月</td><td contenteditable="true">120</td><td contenteditable="true">80</td><td><button class="del-btn" onclick="delRow(this)">×</button></td></tr>
+              <tr><td contenteditable="true">2月</td><td contenteditable="true">135</td><td contenteditable="true">85</td><td><button class="del-btn" onclick="delRow(this)">×</button></td></tr>
+              <tr><td contenteditable="true">3月</td><td contenteditable="true">148</td><td contenteditable="true">90</td><td><button class="del-btn" onclick="delRow(this)">×</button></td></tr>
+              <tr><td contenteditable="true">4月</td><td contenteditable="true">162</td><td contenteditable="true">92</td><td><button class="del-btn" onclick="delRow(this)">×</button></td></tr>
+              <tr><td contenteditable="true">5月</td><td contenteditable="true">178</td><td contenteditable="true">95</td><td><button class="del-btn" onclick="delRow(this)">×</button></td></tr>
+              <tr><td contenteditable="true">6月</td><td contenteditable="true">195</td><td contenteditable="true">98</td><td><button class="del-btn" onclick="delRow(this)">×</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="row-actions">
+          <button class="btn-sm" onclick="addRow('table-line')">+ 行</button>
+          <button class="btn-sm" onclick="addCol('table-line')">+ 系列</button>
+        </div>
+      </div>
+
+      <!-- Pie -->
+      <div class="data-panel" id="panel-pie">
+        <div class="editable-table-wrap">
+          <table class="data-table" id="table-pie">
+            <thead><tr><th>标签</th><th>数值</th><th style="width:28px;border:none;background:transparent"></th></tr></thead>
+            <tbody>
+              <tr><td contenteditable="true">华东</td><td contenteditable="true">35</td><td><button class="del-btn" onclick="delRow(this)">×</button></td></tr>
+              <tr><td contenteditable="true">华南</td><td contenteditable="true">25</td><td><button class="del-btn" onclick="delRow(this)">×</button></td></tr>
+              <tr><td contenteditable="true">华北</td><td contenteditable="true">20</td><td><button class="del-btn" onclick="delRow(this)">×</button></td></tr>
+              <tr><td contenteditable="true">华西</td><td contenteditable="true">12</td><td><button class="del-btn" onclick="delRow(this)">×</button></td></tr>
+              <tr><td contenteditable="true">其他</td><td contenteditable="true">8</td><td><button class="del-btn" onclick="delRow(this)">×</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="row-actions">
+          <button class="btn-sm" onclick="addRow('table-pie')">+ 行</button>
+        </div>
+      </div>
+
+      <!-- Radar -->
+      <div class="data-panel" id="panel-radar">
+        <div class="input-row">
+          <label>维度（逗号分隔）</label>
+          <input class="dim-input" id="radar-dims" value="创新能力,市场份额,客户满意度,成本控制,团队效率,品牌影响力">
+        </div>
+        <div class="editable-table-wrap">
+          <table class="data-table" id="table-radar">
+            <thead><tr>
+              <th>系列名</th>
+              <th>数值（逗号分隔）</th>
+              <th style="width:28px;border:none;background:transparent"></th>
+            </tr></thead>
+            <tbody>
+              <tr><td contenteditable="true">本公司</td><td contenteditable="true">80,65,88,72,78,70</td><td><button class="del-btn" onclick="delRow(this)">×</button></td></tr>
+              <tr><td contenteditable="true">竞争对手</td><td contenteditable="true">70,80,75,68,65,85</td><td><button class="del-btn" onclick="delRow(this)">×</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="row-actions">
+          <button class="btn-sm" onclick="addRow('table-radar', true)">+ 系列</button>
+        </div>
+      </div>
+
+      <!-- Scatter -->
+      <div class="data-panel" id="panel-scatter">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <label style="font-size:11px;color:var(--text-muted)">JSON 格式输入</label>
+          <button class="btn-sm" onclick="fillScatterDemo()">填入示例</button>
+        </div>
+        <textarea class="json-input" id="scatter-json">{
+  "高端市场": {"x":[8.2,9.1,7.8,9.5,8.7],"y":[85,92,78,95,88],"size":[120,200,90,250,160]},
+  "大众市场": {"x":[5.1,6.3,4.8,7.0,5.9],"y":[55,68,48,72,61],"size":[80,150,60,180,100]}
+}</textarea>
+        <div style="display:flex;gap:8px;">
+          <div class="input-row" style="flex:1">
+            <label>X 轴标签</label>
+            <input class="text-input" id="scatter-xlabel" value="价格指数">
+          </div>
+          <div class="input-row" style="flex:1">
+            <label>Y 轴标签</label>
+            <input class="text-input" id="scatter-ylabel" value="满意度评分">
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /数据输入 -->
+
+    <hr class="divider">
+
+    <!-- 标题 -->
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div class="input-row">
+        <label>图表标题</label>
+        <input class="text-input" id="input-title" value="季度销售对比">
+      </div>
+      <div class="input-row">
+        <label>副标题</label>
+        <input class="text-input" id="input-subtitle" value="单位：百万元  |  数据来源：销售部">
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- 图表选项 -->
+    <div>
+      <div class="section-label">图表选项</div>
+      <div id="options-area"></div>
+    </div>
+
+    <!-- 按钮 -->
+    <div class="btn-row">
+      <button id="btn-generate" onclick="generate()">生成图表</button>
+      <button id="btn-download" disabled onclick="downloadChart()">下载 PNG</button>
+    </div>
+
+  </div><!-- /panel -->
+
+  <!-- ── 右侧预览区 ── -->
+  <div id="preview">
+    <div id="preview-placeholder">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+        <path d="M7 10l3 3 4-5 3 3"/>
+      </svg>
+      <p>选择参数后点击「生成图表」</p>
+    </div>
+    <img id="chart-img" alt="图表预览">
+    <div id="error-msg"></div>
+    <div id="loading-overlay">
+      <div class="spinner"></div>
+      <span>生成中...</span>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+// ── 全局状态 ──────────────────────────────────────────────────
+let currentChart = "bar";
+let currentStyle = "mckinsey";
+let currentPalette = "business_blue";
+let lastImageB64 = null;
+
+const CHART_OPTIONS_MAP = {
+  bar:     [{key:"stacked", label:"堆叠模式"}, {key:"horizontal", label:"横向显示"}],
+  line:    [{key:"area",    label:"面积填充"}],
+  pie:     [{key:"donut",   label:"环形图"}],
+  radar:   [],
+  scatter: [],
+};
+
+// ── 初始化 ────────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", async () => {
+  const res = await fetch("/api/options");
+  const opts = await res.json();
+
+  renderChartTabs(opts.chart_types);
+  renderStyleCards(opts.styles, opts.palettes);
+  renderPaletteGrid(opts.palettes);
+  renderOptions("bar");
+  switchDataPanel("bar");
+});
+
+// ── 图表类型 Tab ──────────────────────────────────────────────
+function renderChartTabs(chartTypes) {
+  const container = document.getElementById("chart-tabs");
+  container.innerHTML = chartTypes.map(ct => `
+    <button class="tab-btn ${ct.key === currentChart ? 'active' : ''}"
+            data-key="${ct.key}" onclick="selectChart('${ct.key}')">
+      ${ct.label}
+    </button>
+  `).join("");
+}
+
+function selectChart(key) {
+  currentChart = key;
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.key === key));
+  switchDataPanel(key);
+  renderOptions(key);
+}
+
+// ── 风格卡片 ──────────────────────────────────────────────────
+function renderStyleCards(styles, palettes) {
+  const container = document.getElementById("style-grid");
+  const defaultPalette = palettes.find(p => p.key === currentPalette) || palettes[0];
+
+  container.innerHTML = styles.map(s => {
+    const textColor = s.is_dark ? "#e2e8f0" : "#1e293b";
+    const colors = defaultPalette.colors.slice(0, 3);
+    const barHeights = [60, 80, 45];
+    const bars = colors.map((c, i) => `
+      <div class="mini-bar" style="height:${barHeights[i]}%;background:${c};opacity:0.9"></div>
+    `).join("");
+    return `
+      <div class="style-card ${s.key === currentStyle ? 'active' : ''}"
+           data-key="${s.key}"
+           style="background:${s.background}"
+           onclick="selectStyle('${s.key}')">
+        <div class="card-preview">${bars}</div>
+        <div class="card-name" style="color:${textColor}">${s.name}</div>
+      </div>
+    `;
+  }).join("");
+}
+
+function selectStyle(key) {
+  currentStyle = key;
+  document.querySelectorAll(".style-card").forEach(c => c.classList.toggle("active", c.dataset.key === key));
+}
+
+// ── 颜色方案 ──────────────────────────────────────────────────
+function renderPaletteGrid(palettes) {
+  const container = document.getElementById("palette-grid");
+  container.innerHTML = palettes.map(p => `
+    <div class="palette-item ${p.key === currentPalette ? 'active' : ''}"
+         data-key="${p.key}" onclick="selectPalette('${p.key}')">
+      <div class="swatch-row">
+        ${p.colors.slice(0,6).map(c => `<span class="swatch" style="background:${c}"></span>`).join("")}
+      </div>
+      <span class="palette-name">${p.name}</span>
+    </div>
+  `).join("");
+}
+
+function selectPalette(key) {
+  currentPalette = key;
+  document.querySelectorAll(".palette-item").forEach(p => p.classList.toggle("active", p.dataset.key === key));
+}
+
+// ── 数据面板切换 ──────────────────────────────────────────────
+function switchDataPanel(type) {
+  document.querySelectorAll(".data-panel").forEach(p => p.classList.remove("active"));
+  const panel = document.getElementById(`panel-${type}`);
+  if (panel) panel.classList.add("active");
+}
+
+// ── 图表选项渲染 ──────────────────────────────────────────────
+function renderOptions(type) {
+  const opts = CHART_OPTIONS_MAP[type] || [];
+  const container = document.getElementById("options-area");
+  if (!opts.length) {
+    container.innerHTML = `<span style="font-size:12px;color:var(--text-muted)">此图表类型无额外选项</span>`;
+    return;
+  }
+  container.innerHTML = opts.map(o => `
+    <label class="checkbox-label">
+      <input type="checkbox" id="opt_${o.key}"> ${o.label}
+    </label>
+  `).join("");
+}
+
+// ── 表格操作 ──────────────────────────────────────────────────
+function delRow(btn) {
+  const row = btn.closest("tr");
+  const tbody = row.closest("tbody");
+  if (tbody.querySelectorAll("tr").length > 1) row.remove();
+}
+
+function addRow(tableId, isRadar = false) {
+  const table = document.getElementById(tableId);
+  const tbody = table.querySelector("tbody");
+  const firstRow = tbody.querySelector("tr");
+  const colCount = firstRow.querySelectorAll("td").length - 1;
+
+  const tr = document.createElement("tr");
+  if (isRadar) {
+    tr.innerHTML = `
+      <td contenteditable="true">新系列</td>
+      <td contenteditable="true">50,60,70,50,60,70</td>
+      <td><button class="del-btn" onclick="delRow(this)">×</button></td>
+    `;
+  } else {
+    const cells = Array.from({length: colCount}, () => `<td contenteditable="true">0</td>`).join("");
+    tr.innerHTML = `<td contenteditable="true">新项</td>${cells}<td><button class="del-btn" onclick="delRow(this)">×</button></td>`;
+  }
+  tbody.appendChild(tr);
+}
+
+function addCol(tableId) {
+  const table = document.getElementById(tableId);
+  const thead = table.querySelector("thead tr");
+  const tbody = table.querySelector("tbody");
+
+  // 在删除列之前插入新列
+  const th = document.createElement("th");
+  th.contentEditable = "true";
+  th.className = "series-header";
+  th.textContent = "新系列";
+  thead.insertBefore(th, thead.lastElementChild);
+
+  tbody.querySelectorAll("tr").forEach(row => {
+    const td = document.createElement("td");
+    td.contentEditable = "true";
+    td.textContent = "0";
+    row.insertBefore(td, row.lastElementChild);
+  });
+}
+
+// ── 数据收集 ──────────────────────────────────────────────────
+function collectSeriesTable(tableId) {
+  const table = document.getElementById(tableId);
+  const headers = [...table.querySelectorAll("thead th")].slice(1);
+  const seriesNames = headers.filter((_, i) => i < headers.length - 1)
+                             .map(h => h.textContent.trim() || `系列${i+1}`);
+  const categories = [];
+  const series = {};
+  seriesNames.forEach(n => series[n] = []);
+
+  table.querySelectorAll("tbody tr").forEach(row => {
+    const cells = row.querySelectorAll("td");
+    categories.push(cells[0].textContent.trim() || "?");
+    seriesNames.forEach((n, i) => {
+      series[n].push(parseFloat(cells[i+1]?.textContent) || 0);
+    });
+  });
+  return { categories, series };
+}
+
+function collectPieTable() {
+  const table = document.getElementById("table-pie");
+  const labels = [], values = [];
+  table.querySelectorAll("tbody tr").forEach(row => {
+    const cells = row.querySelectorAll("td");
+    labels.push(cells[0].textContent.trim() || "?");
+    values.push(parseFloat(cells[1]?.textContent) || 0);
+  });
+  return { labels, values };
+}
+
+function collectRadarData() {
+  const dims = document.getElementById("radar-dims").value
+    .split(",").map(s => s.trim()).filter(Boolean);
+  const series = {};
+  document.querySelectorAll("#table-radar tbody tr").forEach(row => {
+    const cells = row.querySelectorAll("td");
+    const name = cells[0].textContent.trim() || "系列";
+    const vals = cells[1].textContent.split(",").map(v => parseFloat(v.trim()) || 0);
+    series[name] = vals;
+  });
+  return { dimensions: dims, series };
+}
+
+function getOption(key) {
+  const el = document.getElementById(`opt_${key}`);
+  return el ? el.checked : false;
+}
+
+function buildPayload() {
+  const base = {
+    chart_type: currentChart,
+    style: currentStyle,
+    palette: currentPalette,
+    title: document.getElementById("input-title").value,
+    subtitle: document.getElementById("input-subtitle").value,
+  };
+
+  if (currentChart === "bar") {
+    const { categories, series } = collectSeriesTable("table-bar");
+    return { ...base, categories, series, stacked: getOption("stacked"), horizontal: getOption("horizontal") };
+  }
+  if (currentChart === "line") {
+    const { categories, series } = collectSeriesTable("table-line");
+    return { ...base, categories, series, area: getOption("area") };
+  }
+  if (currentChart === "pie") {
+    const { labels, values } = collectPieTable();
+    return { ...base, labels, values, donut: getOption("donut") };
+  }
+  if (currentChart === "radar") {
+    const { dimensions, series } = collectRadarData();
+    return { ...base, dimensions, series };
+  }
+  if (currentChart === "scatter") {
+    const raw = document.getElementById("scatter-json").value;
+    let series;
+    try { series = JSON.parse(raw); } catch(e) {
+      throw new Error("散点图 JSON 格式有误：" + e.message);
+    }
+    return {
+      ...base, series,
+      x_label: document.getElementById("scatter-xlabel").value,
+      y_label: document.getElementById("scatter-ylabel").value,
+    };
+  }
+}
+
+// ── 散点图示例 ────────────────────────────────────────────────
+function fillScatterDemo() {
+  document.getElementById("scatter-json").value = JSON.stringify({
+    "高端市场": {"x":[8.2,9.1,7.8,9.5,8.7],"y":[85,92,78,95,88],"size":[120,200,90,250,160]},
+    "大众市场": {"x":[5.1,6.3,4.8,7.0,5.9],"y":[55,68,48,72,61],"size":[80,150,60,180,100]}
+  }, null, 2);
+}
+
+// ── 生成图表 ──────────────────────────────────────────────────
+async function generate() {
+  const btn = document.getElementById("btn-generate");
+  const loading = document.getElementById("loading-overlay");
+  const errEl = document.getElementById("error-msg");
+  const img = document.getElementById("chart-img");
+
+  errEl.style.display = "none";
+  loading.classList.add("active");
+  btn.disabled = true;
+
+  let payload;
+  try {
+    payload = buildPayload();
+  } catch(e) {
+    showError(e.message);
+    loading.classList.remove("active");
+    btn.disabled = false;
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/generate", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      showError(err.detail || "服务器错误");
+      return;
+    }
+
+    const data = await res.json();
+    lastImageB64 = data.image;
+    img.src = "data:image/png;base64," + data.image;
+    img.style.display = "block";
+    document.getElementById("preview-placeholder").style.display = "none";
+    document.getElementById("btn-download").disabled = false;
+
+  } catch(e) {
+    showError("请求失败：" + e.message);
+  } finally {
+    loading.classList.remove("active");
+    btn.disabled = false;
+  }
+}
+
+function showError(msg) {
+  const errEl = document.getElementById("error-msg");
+  errEl.textContent = msg;
+  errEl.style.display = "block";
+  document.getElementById("chart-img").style.display = "none";
+}
+
+// ── 下载 ──────────────────────────────────────────────────────
+function downloadChart() {
+  if (!lastImageB64) return;
+  const a = document.createElement("a");
+  a.href = "data:image/png;base64," + lastImageB64;
+  a.download = `chart_${currentChart}_${currentStyle}_${currentPalette}.png`;
+  a.click();
+}
+</script>
+</body>
+</html>
