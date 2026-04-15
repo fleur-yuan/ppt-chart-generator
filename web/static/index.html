@@ -626,9 +626,20 @@ document.addEventListener("DOMContentLoaded", async () => {
       // 填入柱状图表格（单系列：考频%）
       const tbody = document.querySelector("#table-bar tbody");
       const thead = document.querySelector("#table-bar thead tr");
-      // 设置表头系列名
-      const seriesHeader = thead.querySelector(".series-header");
-      if (seriesHeader) seriesHeader.textContent = "考频(%)";
+      // 只保留单系列，删除多余的系列列
+      const allSeriesHeaders = thead.querySelectorAll(".series-header");
+      allSeriesHeaders[0].textContent = "考频(%)";
+      // 删除多余系列列（从后往前删）
+      for (let i = allSeriesHeaders.length - 1; i >= 1; i--) {
+        allSeriesHeaders[i].parentElement.removeChild(allSeriesHeaders[i]);
+      }
+      // 同步删除 tbody 每行多余的列
+      tbody.querySelectorAll("tr").forEach(tr => {
+        const cells = tr.querySelectorAll("td");
+        for (let i = cells.length - 2; i >= 2; i--) {
+          tr.removeChild(cells[i]);
+        }
+      });
       // 清空并填入数据行
       tbody.innerHTML = "";
       labels.forEach((label, i) => {

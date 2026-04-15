@@ -4,13 +4,14 @@
 import matplotlib.font_manager as fm
 
 _PREFERRED_FONTS = [
+    # Linux (Railway/server)
+    "Noto Sans CJK SC", "Noto Sans CJK TC", "Source Han Sans SC",
+    "WenQuanYi Micro Hei",
     # macOS
     "PingFang SC", "PingFang HK", "PingFang TC",
     "STHeiti", "Heiti TC", "Heiti SC",
     # Windows
     "Microsoft YaHei", "SimHei", "SimSun",
-    # Linux
-    "WenQuanYi Micro Hei", "Noto Sans CJK SC", "Source Han Sans SC",
     # 通用衬线（学术用）
     "Songti SC", "STSong", "SimSun",
     # 最终兜底
