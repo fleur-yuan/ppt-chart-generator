@@ -613,6 +613,45 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderPaletteGrid(opts.palettes);
   renderOptions("bar");
   switchDataPanel("bar");
+
+  // ── 从统计分析器跳转时自动填入数据 ──────────────────────────
+  const params = new URLSearchParams(window.location.search);
+  const d = params.get("data");
+  if (d) {
+    try {
+      const { title, labels, values } = JSON.parse(decodeURIComponent(d));
+      // 默认填入柱状图
+      selectChart("bar");
+      if (title) document.getElementById("input-title").value = title;
+      // 填入柱状图表格（单系列：考频%）
+      const tbody = document.querySelector("#table-bar tbody");
+      const thead = document.querySelector("#table-bar thead tr");
+      // 设置表头系列名
+      const seriesHeader = thead.querySelector(".series-header");
+      if (seriesHeader) seriesHeader.textContent = "考频(%)";
+      // 清空并填入数据行
+      tbody.innerHTML = "";
+      labels.forEach((label, i) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td contenteditable="true">${label}</td><td contenteditable="true">${values[i]}</td><td><button class="del-btn" onclick="delRow(this)">×</button></td>`;
+        tbody.appendChild(tr);
+      });
+      // 同步填入饼图表格
+      const ptbody = document.querySelector("#table-pie tbody");
+      ptbody.innerHTML = "";
+      labels.forEach((label, i) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td contenteditable="true">${label}</td><td contenteditable="true">${values[i]}</td><td><button class="del-btn" onclick="delRow(this)">×</button></td>`;
+        ptbody.appendChild(tr);
+      });
+      // 同步填入雷达图
+      document.getElementById("radar-dims").value = labels.join(",");
+      const rtbody = document.querySelector("#table-radar tbody");
+      rtbody.innerHTML = `<tr><td contenteditable="true">考频(%)</td><td contenteditable="true">${values.join(",")}</td><td><button class="del-btn" onclick="delRow(this)">×</button></td></tr>`;
+    } catch(e) {
+      console.warn("自动填入数据失败：", e);
+    }
+  }
 });
 
 // ── 图表类型 Tab ──────────────────────────────────────────────
