@@ -16,4 +16,4 @@ RUN python -c "import matplotlib; matplotlib.font_manager._load_fontmanager(try_
 
 COPY . .
 
-CMD ["sh", "-c", "uvicorn web.app:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD uvicorn web.app:app --host 0.0.0.0 --port $PORT
