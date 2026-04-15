@@ -12,9 +12,21 @@ from matplotlib.patches import FancyBboxPatch
 from styles.base import StyleConfig
 from palettes.presets import Palette
 
-# 启动时注册内置中文字体
-_BUILTIN_FONT = os.path.join(os.path.dirname(os.path.dirname(__file__)), "styles", "NotoSansCJKsc-Regular.otf")
-if os.path.exists(_BUILTIN_FONT):
+# 启动时注册内置中文字体（多个候选路径，兼容不同部署环境）
+def _find_builtin_font():
+    candidates = [
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "styles", "NotoSansCJKsc-Regular.otf"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "styles", "NotoSansCJKsc-Regular.otf"),
+        os.path.join(os.getcwd(), "styles", "NotoSansCJKsc-Regular.otf"),
+        "/app/styles/NotoSansCJKsc-Regular.otf",
+    ]
+    for p in candidates:
+        if os.path.exists(p):
+            return os.path.abspath(p)
+    return None
+
+_BUILTIN_FONT = _find_builtin_font()
+if _BUILTIN_FONT:
     fm.fontManager.addfont(_BUILTIN_FONT)
     _cjk_font_name = fm.FontProperties(fname=_BUILTIN_FONT).get_name()
     matplotlib.rcParams["font.family"] = _cjk_font_name
