@@ -6,10 +6,19 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.font_manager as fm
 from matplotlib.patches import FancyBboxPatch
 
 from styles.base import StyleConfig
 from palettes.presets import Palette
+
+# 启动时注册内置中文字体
+_BUILTIN_FONT = os.path.join(os.path.dirname(os.path.dirname(__file__)), "styles", "NotoSansCJKsc-Regular.otf")
+if os.path.exists(_BUILTIN_FONT):
+    fm.fontManager.addfont(_BUILTIN_FONT)
+    _cjk_font_name = fm.FontProperties(fname=_BUILTIN_FONT).get_name()
+    matplotlib.rcParams["font.family"] = _cjk_font_name
+    matplotlib.rcParams["axes.unicode_minus"] = False
 
 
 class BaseChart:
